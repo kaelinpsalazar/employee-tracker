@@ -1,9 +1,7 @@
 const inquirer = require('inquirer');
-const table = require('console.table');
-const mysql = require('mysql2');
 const db = require('./db/connection');
 
-const question = () => {
+const start = () => {
 inquirer.prompt([{
     message: 'What would you like to do?',
     type: 'list',
@@ -12,15 +10,14 @@ inquirer.prompt([{
         'Add Employee',
         'Add Role',
         'View Departments',
-        'View Role',
+        'View Roles',
         'View Employees',
         'Update Employee Role',
-        'nevermind',
     ],
-    name:'choice'
+    name: 'choice'
 }])
-.then(init => {
-    switch(init.choice) {
+.then(answer => {
+    switch(answer.choice) {
         case 'Add Department':
             addDepartment()
             break
@@ -36,39 +33,30 @@ inquirer.prompt([{
                     case 'View Roles':
                     viewRoles()
                     break
-                    case 'view Employees':
+                    case 'View Employees':
                     viewEmployees()
                     break
                     case 'Update Empoloyee Role':
-                    updateEmployeeRole()
-                    break
-                    case 'nevermind':
-                    console.log('ok!')
     }
 })}
 
 const addDepartment = () => {
-    console.log('you attempted to add a department')
     inquirer.prompt([
     {
         message:'What is the name of the department you would like to add?',
         type: 'input',
         name:'name'
-    }])
-    .then(department => {
-        console.log(department)
-        db.query('INSERT INTO departments SET ?', department, err => {
-            if(err) {console.log(err)}
+    }]) .then(data => {
+        db.promise().query('INSERT INTO departments SET ?',data)
+        .then(data => {
+            console.log('department has been inserted')
+            start()
         })
-        console.log('department added')
-        question()
-
 
     })
 }
 
 const addRole = () => {
-    console.log('you attempted to add a department')
     inquirer.prompt([
     {
         message:'What is the title of the Role you would like to add?',
@@ -85,19 +73,17 @@ const addRole = () => {
         type: 'input',
         name:'department_id'
     }])
-    .then(role => {
-        console.log(role)
-        db.query('INSERT INTO role SET ?', role, err => {
-            if(err) {console.log(err)}
+    .then(data => {
+        db.promise().query('INSERT INTO roles SET ?',data)
+        .then(data => {
+            console.log('role has been inserted')
+            start()
         })
-        console.log('role added')
-        question()
-
 
     })
-}
+    }
+
 const addEmployee = () => {
-    console.log('you attempted to add a department')
     inquirer.prompt([
     {
         message:'What is the first name of the employee you would like to add?',
@@ -114,56 +100,62 @@ const addEmployee = () => {
         type: 'input',
         name:'role_id'
     },
-{
-    message: 'is the employee a manager?',
-    type: 'list',
-    choices: ['yes','no'],
-    name: 'managerBoolean'
-
-}])
-    .then(employee => {
-        console.log(employee)
-        if (employee.managerBoolean === 'yes'){
-            console.log('you tried to add a manager')
-            delete employee.managerBoolean
-            console.log(employee)
-            db.query('INSERT INTO employee SET ?', employee, err => {
-                if(err) {console.log(err)}
-            })
-            console.log('employee added')
-            question()
-
-        } else if (employee.managerBoolean ==='no') {
-        }
-
-    })
     
-}
+])
+.then(data => {
+    db.promise().query('INSERT INTO employees SET ?',data)
+    .then(data => {
+        console.log('employee has been inserted')
+        start()
+    })
 
+})}
+
+    
 const updateEmployeeRole =() => {
-    inquirer.prompt([{
-        message:'what is the id of the employee you would like to update',
-        type: 'input',
-        name:'id'
-    },
-    {
-        message:'what is the id of the role that the employee should be updated to?',
-        type: 'input',
-        name: 'role_id'
-    }])
-    .then(employee => {
-        
-        let newRole = {
-            role_id:employee.role_id
-        }
-        db.query(`UPDATE employee SET ? WHERE id = ${employee.id}`, newRole, err => {
-            if(err) {console.log(err)}
-        })
-        console.log('employee updated')
-        question()
-        
+    db.promise().query('SELECT title, department_id FROM roles') 
+    .then(roleData => {
+        const roleChoices= roleData [0].map(role => ({name:role.title, value: role.department_id}) )
+        inquirer.prompt([{
+            message:'what is the id of the employee you would like to update',
+            type: 'input',
+            name:'id'
+        },
+        {
+            message:'what is the id of the role that the employee should be updated to?',
+            type: 'list',
+            name: 'role',
+            choices: roleChoices
+        }])
 
     })
 }
 
-question()
+const viewDepartments =() => {
+    console.log('viewDepartments')
+    db.promise().query ('SELECT * FROM departments;')
+    .then(departmentData => {
+        console.table(departmentData[0])
+        setTimeout(start(), 3000)
+    })
+}
+const viewEmployees =() => {
+    console.log('viewEmployees')
+    db.promise().query ('SELECT * FROM employees;')
+    .then(employeeData => {
+        console.table(employeeData[0])
+        setTimeout(start(), 3000)
+    })
+}
+
+const viewRoles =() => {
+    console.log('viewRoles')
+    db.promise().query ('SELECT * FROM roles;')
+    .then(roleData => {
+        console.table(roleData[0])
+        setTimeout(start(), 3000)
+    })
+  
+}
+
+start()
